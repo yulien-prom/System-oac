@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atención a la Ciudadanía - OAC</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <div id="login-screen" class="container-login">
+        <div class="login-card">
+            <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Admin" width="70">
+            <h2>Acceso Administrativo</h2>
+            <form id="login-form">
+                <input type="text" id="user" placeholder="Usuario" required>
+                <input type="password" id="pass" placeholder="Contraseña" required>
+                <button type="submit" class="btn-primary">Entrar al Sistema</button>
+                <p id="error-msg" class="error" style="display:none; color:red; margin-top:10px;">Credenciales incorrectas</p>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard" style="display:none;">
+        <nav class="navbar">
+            <div class="nav-content">
+                <h1>Sistema de Reportes OAC</h1>
+                <button id="btn-logout" class="btn-logout">Cerrar Sesión</button>
+            </div>
+        </nav>
+
+        <div class="main-container">
+            <div class="form-section">
+                <h2>Registrar Nuevo Caso</h2>
+                <form id="registro-caso">
+                    <div class="form-grid">
+                        <input type="text" id="nombre" placeholder="Nombre Completo" required>
+                        <input type="text" id="cedula" placeholder="Cédula" required>
+                        <input type="text" id="tlf" placeholder="Teléfono" required>
+                        <select id="ambito" required>
+                            <option value="">Seleccione Ámbito</option>
+                            <option value="articulacion">Atención Social Integral y Articulada</option>
+                            <option value="participacion">Participación Ciudadana</option>
+                        </select>
+                        <input type="text" id="estado" placeholder="Estado" required>
+                        <input type="text" id="parroquia" placeholder="Parroquia" required>
+                        <input type="text" id="sector" placeholder="Sector" required>
+                    </div>
+                    <textarea id="description" placeholder="Descripción del caso" required></textarea>
+                    
+                    <div class="file-upload-wrapper">
+                        <label for="file-input" class="custom-file-upload">
+                            <i class="fas fa-cloud-upload-alt"></i> Adjuntar Documento o Imagen
+                        </label>
+                        <input id="file-input" type="file" accept="image/*" onchange="mostrarNombreArchivo(this)" />
+                        <span id="file-name-display"></span>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Guardar Registro</button>
+                </form>
+            </div>
+
+            <div class="actions-bar">
+                <input type="text" id="buscador" placeholder="Buscar por nombre o cédula..." oninput="filtrarCasos()">
+                <div class="top-actions">
+                    <button onclick="abrirGrafica()" class="btn-grafica"><i class="fas fa-chart-bar"></i> Ver Estadísticas</button>
+                    <button onclick="descargarReporteGeneral()" class="btn-reporte"><i class="fas fa-file-pdf"></i> Reporte General</button>
+                </div>
+            </div>
+
+            <div class="columns-container">
+                <div class="case-column">
+                    <div class="column-header articulacion-h">Atención Social Integral y Articulada</div>
+                    <div id="lista-articulacion" class="case-list-wrapper"></div>
+                </div>
+                <div class="case-column">
+                    <div class="column-header participacion-h">Participación Ciudadana</div>
+                    <div id="lista-participacion" class="case-list-wrapper"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-detalle" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-modal" onclick="cerrarModal()">&times;</span>
+            <div id="contenido-detalle"></div>
+        </div>
+    </div>
+
+    <div id="modal-grafica" class="modal-overlay">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close-modal" onclick="cerrarGrafica()">&times;</span>
+            <h2 style="text-align:center; margin-bottom: 20px;">Estadística Mensual</h2>
+            <canvas id="graficaCasos"></canvas>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3GAqeVWyLCxIRjaUi5qaEMoS5NZhOAAk",
+            authDomain: "sistemareport.firebaseapp.com",
+            databaseURL: "https://sistemareport-default-rtdb.firebaseio.com",
+            projectId: "sistemareport",
+            storageBucket: "sistemareport.firebasestorage.app",
+            messagingSenderId: "456602698588",
+            appId: "1:456602698588:web:109ec2543d83f43881075d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.db = db;
+        window.dbRef = ref;
+        window.dbPush = push;
+        window.dbOnValue = onValue;
+        window.dbSet = set;
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>
