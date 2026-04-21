@@ -1,9 +1,9 @@
 // 1. LISTADO DE ADMINISTRADORES AUTORIZADOS
 const admins = [
-    { u: "Damaris morales", p: "V-19379614" },
-    { u: "Erika rodriguez", p: "V-12421612" },
-    { u: "Iriana Roa", p: "V-30224501" },
-    { u: "Rosa bermudez", p: "V-20978302" }
+    { u: "DAMARIS MORALES", p: "V-19379614" },
+    { u: "ERIKA RODRIGUEZ", p: "V-12421612" },
+    { u: "IRIANA ROA", p: "V-30224501" },
+    { u: "ROSA BERMUDEZ", p: "V-20978302" }
 ];
 
 let baseDatosCasos = [];
@@ -24,15 +24,9 @@ document.getElementById('login-form').onsubmit = function(e) {
         const btnLogout = document.getElementById('btn-logout');
         btnLogout.innerText = adminActual.u;
         
-        btnLogout.onmouseenter = () => {
-            btnLogout.innerText = "Cerrar Sesión";
-        };
-        btnLogout.onmouseleave = () => {
-            btnLogout.innerText = adminActual.u;
-        };
-        btnLogout.onclick = () => {
-            location.reload();
-        };
+        btnLogout.onmouseenter = () => { btnLogout.innerText = "Cerrar Sesión"; };
+        btnLogout.onmouseleave = () => { btnLogout.innerText = adminActual.u; };
+        btnLogout.onclick = () => { location.reload(); };
 
         iniciarNube();
     } else {
@@ -60,6 +54,7 @@ document.getElementById('registro-caso').onsubmit = function(e) {
     
     const nuevoCaso = {
         id: Date.now(),
+        fecha: new Date().toLocaleString(),
         nombre: document.getElementById('nombre').value,
         cedula: document.getElementById('cedula').value,
         tlf: document.getElementById('tlf').value,
@@ -136,7 +131,7 @@ function filtrarCasos() {
     });
 }
 
-// 6. MOSTRAR DETALLES
+// 6. MOSTRAR DETALLES, EDITAR Y ELIMINAR
 function verDetalle(fId) {
     const c = baseDatosCasos.find(x => x.fId === fId);
     if (!c) return;
@@ -157,7 +152,10 @@ function verDetalle(fId) {
     }
 
     document.getElementById('contenido-detalle').innerHTML = `
-        <h2 style="color:#4CAF50;">Detalle del Registro</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="color:#28a745;">Detalle del Registro</h2>
+            <small style="color:#666;">Registrado el: ${c.fecha || 'N/A'}</small> 
+        </div>
         <hr style="margin:10px 0; opacity:0.2;">
         <p><strong>Nombre:</strong> ${c.nombre}</p>
         <p><strong>Cédula:</strong> ${c.cedula}</p>
@@ -165,6 +163,7 @@ function verDetalle(fId) {
         <p><strong>Ubicación:</strong> ${c.estado}, ${c.parroquia}, ${c.sector}</p>
         <p><strong>Descripción:</strong> ${c.descripcion}</p>
         ${adjuntoHtml}
+        
         <div style="margin-top:20px; padding-top:15px; border-top: 1px solid #eee;">
             <label><strong>Actualizar Estatus:</strong></label>
             <select onchange="actualizarEstatus('${fId}', this.value)" style="width:100%; padding:10px; margin-top:10px; border-radius:8px;">
@@ -172,6 +171,15 @@ function verDetalle(fId) {
                 <option value="resuelto" ${c.status === 'resuelto' ? 'selected' : ''}>Resuelto</option>
                 <option value="sin resolver" ${c.status === 'sin resolver' ? 'selected' : ''}>Sin Resolver</option>
             </select>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:20px;">
+            <button onclick="prepararEdicion('${fId}')" class="btn-edit" style="background:#ffc107; color:black; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:bold;">
+                <i class="fas fa-edit"></i> Editar Datos
+            </button>
+            <button onclick="eliminarCaso('${fId}')" class="btn-delete" style="background:#dc3545; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:bold;">
+                <i class="fas fa-trash"></i> Eliminar Caso
+            </button>
         </div>
     `;
 }
@@ -182,6 +190,38 @@ window.actualizarEstatus = function(fId, nuevoStatus) {
         cerrarModal();
     }
 };
+
+window.eliminarCaso = function(fId) {
+    if (confirm("¿Está seguro de que desea eliminar permanentemente este registro?")) {
+        if (window.dbSet && window.db) {
+            window.dbSet(window.dbRef(window.db, `casos/${fId}`), null);
+            cerrarModal();
+        }
+    }
+};
+
+window.prepararEdicion = function(fId) {
+    const c = baseDatosCasos.find(x => x.fId === fId);
+    
+    const nuevoNombre = prompt("Editar Nombre:", c.nombre);
+    const nuevaDescripcion = prompt("Editar Descripción:", c.descripcion);
+    const nuevaFecha = prompt("Editar Fecha (ejemplo: 21/4/2025, 10:00:00 a. m.):", c.fecha || "");
+    
+    if (nuevoNombre !== null && nuevaDescripcion !== null && nuevaFecha !== null) {
+        if (window.dbSet && window.db) {
+            window.dbSet(window.dbRef(window.db, `casos/${fId}/nombre`), nuevoNombre);
+            window.dbSet(window.dbRef(window.db, `casos/${fId}/descripcion`), nuevaDescripcion);
+            window.dbSet(window.dbRef(window.db, `casos/${fId}/fecha`), nuevaFecha);
+            
+            alert("Registro actualizado correctamente");
+            cerrarModal();
+        }
+    }
+};
+
+// Asegúrate de que las funciones de cerrarGrafica y cerrarModal estén debajo si existen
+function cerrarGrafica() { document.getElementById('modal-grafica').style.display = 'none'; }
+function cerrarModal() { document.getElementById('modal-detalle').style.display = 'none'; }
 
 // 7. REPORTES Y GRÁFICAS
 window.descargarReporteGeneral = function() {
@@ -215,15 +255,9 @@ window.abrirGrafica = function() {
         type: 'bar',
         data: {
             labels: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
-            datasets: [{ 
-                label: 'Casos Registrados', 
-                data: datos, 
-                backgroundColor: '#4CAF50' 
-            }]
+            datasets: [{ label: 'Casos Registrados', data: datos, backgroundColor: '#4CAF50' }]
         },
-        options: {
-            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-        }
+        options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
     });
 };
 
