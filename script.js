@@ -54,7 +54,9 @@ document.getElementById('registro-caso').onsubmit = function(e) {
     
     const nuevoCaso = {
         id: Date.now(),
-        fecha: new Date().toLocaleString(),
+        fecha: new Date().toLocaleString(), // Fecha del sistema
+        fechaCaso: document.getElementById('fecha-caso').value, // Fecha asignada al caso para la gráfica
+        tipoSolicitante: document.getElementById('tipo-solicitante').value, // Nuevo campo
         nombre: document.getElementById('nombre').value,
         cedula: document.getElementById('cedula').value,
         tlf: document.getElementById('tlf').value,
@@ -64,8 +66,7 @@ document.getElementById('registro-caso').onsubmit = function(e) {
         sector: document.getElementById('sector').value,
         descripcion: document.getElementById('description').value,
         status: 'en revisión',
-        archivo: null,
-        nombreArchivo: null
+        archivos: [] // Ahora es un arreglo para múltiples archivos
     };
 
     const guardarEnNube = (caso) => {
@@ -77,23 +78,40 @@ document.getElementById('registro-caso').onsubmit = function(e) {
         }
     };
 
-    if (fileInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            nuevoCaso.archivo = event.target.result;
-            nuevoCaso.nombreArchivo = fileInput.files[0].name;
+    // Procesar múltiples archivos
+    if (fileInput.files.length > 0) {
+        const promesasDeArchivos = Array.from(fileInput.files).map(file => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    resolve({
+                        data: event.target.result,
+                        nombre: file.name
+                    });
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        // Esperar a que se lean todos los archivos antes de guardar
+        Promise.all(promesasDeArchivos).then(archivosLeidos => {
+            nuevoCaso.archivos = archivosLeidos;
             guardarEnNube(nuevoCaso);
-        };
-        reader.readAsDataURL(fileInput.files[0]);
+        });
     } else {
         guardarEnNube(nuevoCaso);
     }
 };
 
+// Muestra la cantidad de archivos seleccionados
 window.mostrarNombreArchivo = function(input) {
     const display = document.getElementById('file-name-display');
     if (input.files.length > 0) {
-        display.innerText = "Archivo: " + input.files[0].name;
+        if (input.files.length === 1) {
+            display.innerText = "Archivo: " + input.files[0].name;
+        } else {
+            display.innerText = input.files.length + " archivos seleccionados";
+        }
     } else {
         display.innerText = "";
     }
@@ -139,24 +157,39 @@ function verDetalle(fId) {
     document.getElementById('modal-detalle').style.display = 'flex';
     
     let adjuntoHtml = '';
-    if (c.archivo) {
-        if (c.archivo.startsWith('data:image')) {
-            adjuntoHtml = `
-                <div style="margin-top:15px;">
-                    <strong>Evidencia Adjunta:</strong><br>
-                    <img src="${c.archivo}" class="img-preview-detalle" style="width:100%; border-radius:10px; margin-top:10px; border:1px solid #ddd;">
-                </div>`;
-        } else {
-            adjuntoHtml = `<p><strong>Archivo:</strong> <a href="${c.archivo}" download="${c.nombreArchivo}">Descargar Documento</a></p>`;
-        }
+    
+    // Unificar archivos viejos (archivo único) y nuevos (arreglo) para no perder compatibilidad
+    let listaDocumentos = c.archivos ? [...c.archivos] : [];
+    if (c.archivo && !c.archivos) {
+        listaDocumentos.push({ data: c.archivo, nombre: c.nombreArchivo });
     }
+
+    if (listaDocumentos.length > 0) {
+        adjuntoHtml = `
+            <div style="margin-top:15px;">
+                <strong>Evidencia Adjunta:</strong>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top:10px;">
+        `;
+        listaDocumentos.forEach(doc => {
+            if (doc.data.startsWith('data:image')) {
+                adjuntoHtml += `<img src="${doc.data}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 10px; border: 1px solid #ddd; cursor: pointer;" onclick="window.open('${doc.data}')" title="${doc.nombre}">`;
+            } else {
+                adjuntoHtml += `<p><a href="${doc.data}" download="${doc.nombre}" style="display:inline-block; padding: 5px 10px; background: #6f42c1; color: white; border-radius: 5px; text-decoration: none; font-size: 14px;">Descargar ${doc.nombre}</a></p>`;
+            }
+        });
+        adjuntoHtml += `</div></div>`;
+    }
+
+    // Usar la fecha del caso si existe, sino la de registro
+    const fechaAmostrar = c.fechaCaso ? c.fechaCaso : (c.fecha || 'N/A');
 
     document.getElementById('contenido-detalle').innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 style="color:#28a745;">Detalle del Registro</h2>
-            <small style="color:#666;">Registrado el: ${c.fecha || 'N/A'}</small> 
+            <small style="color:#666;">Fecha del Caso: ${fechaAmostrar}</small> 
         </div>
         <hr style="margin:10px 0; opacity:0.2;">
+        <p><strong>Tipo de Solicitante:</strong> <span style="background: #eef; padding: 2px 8px; border-radius: 12px; font-size: 14px;">${c.tipoSolicitante || 'No definido'}</span></p>
         <p><strong>Nombre:</strong> ${c.nombre}</p>
         <p><strong>Cédula:</strong> ${c.cedula}</p>
         <p><strong>Teléfono:</strong> ${c.tlf}</p>
@@ -205,23 +238,20 @@ window.prepararEdicion = function(fId) {
     
     const nuevoNombre = prompt("Editar Nombre:", c.nombre);
     const nuevaDescripcion = prompt("Editar Descripción:", c.descripcion);
-    const nuevaFecha = prompt("Editar Fecha (ejemplo: 21/4/2025, 10:00:00 a. m.):", c.fecha || "");
+    // Editamos la fecha visual (fechaCaso)
+    const nuevaFecha = prompt("Editar Fecha (Formato AAAA-MM-DD):", c.fechaCaso || "");
     
     if (nuevoNombre !== null && nuevaDescripcion !== null && nuevaFecha !== null) {
         if (window.dbSet && window.db) {
             window.dbSet(window.dbRef(window.db, `casos/${fId}/nombre`), nuevoNombre);
             window.dbSet(window.dbRef(window.db, `casos/${fId}/descripcion`), nuevaDescripcion);
-            window.dbSet(window.dbRef(window.db, `casos/${fId}/fecha`), nuevaFecha);
+            window.dbSet(window.dbRef(window.db, `casos/${fId}/fechaCaso`), nuevaFecha);
             
             alert("Registro actualizado correctamente");
             cerrarModal();
         }
     }
 };
-
-// Asegúrate de que las funciones de cerrarGrafica y cerrarModal estén debajo si existen
-function cerrarGrafica() { document.getElementById('modal-grafica').style.display = 'none'; }
-function cerrarModal() { document.getElementById('modal-detalle').style.display = 'none'; }
 
 // 7. REPORTES Y GRÁFICAS
 window.descargarReporteGeneral = function() {
@@ -246,8 +276,21 @@ window.abrirGrafica = function() {
     const datos = new Array(12).fill(0);
     
     baseDatosCasos.forEach(c => {
-        const mes = new Date(c.id).getMonth();
-        datos[mes]++;
+        let mesIndex;
+        // Si el caso tiene una fecha asignada (ej. 2024-01-15), sacamos el mes de ahí
+        if (c.fechaCaso) {
+            const partes = c.fechaCaso.split('-');
+            if (partes.length >= 2) {
+                mesIndex = parseInt(partes[1], 10) - 1; // Enero es 0, Febrero es 1...
+            }
+        } else {
+            // Fallback para casos viejos: extraer mes del ID (Timestamp)
+            mesIndex = new Date(c.id).getMonth();
+        }
+
+        if (mesIndex >= 0 && mesIndex <= 11) {
+            datos[mesIndex]++;
+        }
     });
 
     if (miGrafica) miGrafica.destroy();
@@ -255,7 +298,7 @@ window.abrirGrafica = function() {
         type: 'bar',
         data: {
             labels: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
-            datasets: [{ label: 'Casos Registrados', data: datos, backgroundColor: '#4CAF50' }]
+            datasets: [{ label: 'Casos Registrados por mes correspondiente', data: datos, backgroundColor: '#4CAF50' }]
         },
         options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
     });
@@ -263,3 +306,5 @@ window.abrirGrafica = function() {
 
 function cerrarGrafica() { document.getElementById('modal-grafica').style.display = 'none'; }
 function cerrarModal() { document.getElementById('modal-detalle').style.display = 'none'; }
+
+

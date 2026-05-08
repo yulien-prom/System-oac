@@ -47,6 +47,12 @@
                         <input type="text" id="nombre" placeholder="Nombre Completo" required>
                         <input type="text" id="cedula" placeholder="Cédula" required>
                         <input type="text" id="tlf" placeholder="Teléfono" required>
+                        <select id="tipo-solicitante" required>
+                            <option value="">Tipo de Solicitante</option>
+                            <option value="Persona Natural">Persona Natural</option>
+                            <option value="Trabajador de la Fundación">Trabajador de la Fundación</option>
+                            <option value="Familiar de Trabajador">Familiar de Trabajador</option>
+                        </select>
                         <select id="ambito" required>
                             <option value="">Seleccione Ámbito</option>
                             <option value="articulacion">Atención Social Integral y Articulada</option>
@@ -55,14 +61,15 @@
                         <input type="text" id="estado" placeholder="Estado" required>
                         <input type="text" id="parroquia" placeholder="Parroquia" required>
                         <input type="text" id="sector" placeholder="Sector" required>
+                        <input type="date" id="fecha-caso" title="Fecha correspondiente del caso" required>
                     </div>
                     <textarea id="description" placeholder="Descripción del caso" required></textarea>
                     
                     <div class="file-upload-wrapper">
                         <label for="file-input" class="custom-file-upload">
-                            <i class="fas fa-cloud-upload-alt"></i> Adjuntar Documento o Imagen
+                            <i class="fas fa-cloud-upload-alt"></i> Adjuntar Archivos 
                         </label>
-                        <input id="file-input" type="file" accept="image/*" onchange="mostrarNombreArchivo(this)" />
+                        <input id="file-input" type="file" accept="image/*" multiple onchange="mostrarNombreArchivo(this)" />
                         <span id="file-name-display"></span>
                     </div>
 
