@@ -93,7 +93,7 @@ document.getElementById('registro-caso').onsubmit = function(e) {
             });
         });
 
-        // Esperar a que se lean todos los archivos antes de guardar
+        // Esperar a que se lea todos los archivos antes de guardar
         Promise.all(promesasDeArchivos).then(archivosLeidos => {
             nuevoCaso.archivos = archivosLeidos;
             guardarEnNube(nuevoCaso);
@@ -172,7 +172,8 @@ function verDetalle(fId) {
         `;
         listaDocumentos.forEach(doc => {
             if (doc.data.startsWith('data:image')) {
-                adjuntoHtml += `<img src="${doc.data}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 10px; border: 1px solid #ddd; cursor: pointer;" onclick="window.open('${doc.data}')" title="${doc.nombre}">`;
+                // SOLUCIÓN: Cambiado window.open por la función personalizada del visor interno
+                adjuntoHtml += `<img src="${doc.data}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 10px; border: 1px solid #ddd; cursor: pointer;" onclick="mostrarVisorImagen('${doc.data}')" title="${doc.nombre}">`;
             } else {
                 adjuntoHtml += `<p><a href="${doc.data}" download="${doc.nombre}" style="display:inline-block; padding: 5px 10px; background: #6f42c1; color: white; border-radius: 5px; text-decoration: none; font-size: 14px;">Descargar ${doc.nombre}</a></p>`;
             }
@@ -183,36 +184,48 @@ function verDetalle(fId) {
     // Usar la fecha del caso si existe, sino la de registro
     const fechaAmostrar = c.fechaCaso ? c.fechaCaso : (c.fecha || 'N/A');
 
+    // Inyectamos la estructura dividida en dos contenedores controlados
     document.getElementById('contenido-detalle').innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2 style="color:#28a745;">Detalle del Registro</h2>
-            <small style="color:#666;">Fecha del Caso: ${fechaAmostrar}</small> 
-        </div>
-        <hr style="margin:10px 0; opacity:0.2;">
-        <p><strong>Tipo de Solicitante:</strong> <span style="background: #eef; padding: 2px 8px; border-radius: 12px; font-size: 14px;">${c.tipoSolicitante || 'No definido'}</span></p>
-        <p><strong>Nombre:</strong> ${c.nombre}</p>
-        <p><strong>Cédula:</strong> ${c.cedula}</p>
-        <p><strong>Teléfono:</strong> ${c.tlf}</p>
-        <p><strong>Ubicación:</strong> ${c.estado}, ${c.parroquia}, ${c.sector}</p>
-        <p><strong>Descripción:</strong> ${c.descripcion}</p>
-        ${adjuntoHtml}
-        
-        <div style="margin-top:20px; padding-top:15px; border-top: 1px solid #eee;">
-            <label><strong>Actualizar Estatus:</strong></label>
-            <select onchange="actualizarEstatus('${fId}', this.value)" style="width:100%; padding:10px; margin-top:10px; border-radius:8px;">
-                <option value="en revisión" ${c.status === 'en revisión' ? 'selected' : ''}>En Revisión</option>
-                <option value="resuelto" ${c.status === 'resuelto' ? 'selected' : ''}>Resuelto</option>
-                <option value="sin resolver" ${c.status === 'sin resolver' ? 'selected' : ''}>Sin Resolver</option>
-            </select>
-        </div>
+        <div id="detalle-textos">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2 style="color:#28a745;">Detalle del Registro</h2>
+                <small style="color:#666;">Fecha del Caso: ${fechaAmostrar}</small> 
+            </div>
+            <hr style="margin:10px 0; opacity:0.2;">
+            <p><strong>Tipo de Solicitante:</strong> <span style="background: #eef; padding: 2px 8px; border-radius: 12px; font-size: 14px;">${c.tipoSolicitante || 'No definido'}</span></p>
+            <p><strong>Nombre:</strong> ${c.nombre}</p>
+            <p><strong>Cédula:</strong> ${c.cedula}</p>
+            <p><strong>Teléfono:</strong> ${c.tlf}</p>
+            <p><strong>Ubicación:</strong> ${c.estado}, ${c.parroquia}, ${c.sector}</p>
+            <p><strong>Descripción:</strong> ${c.descripcion}</p>
+            ${adjuntoHtml}
+            
+            <div style="margin-top:20px; padding-top:15px; border-top: 1px solid #eee;">
+                <label><strong>Actualizar Estatus:</strong></label>
+                <select onchange="actualizarEstatus('${fId}', this.value)" style="width:100%; padding:10px; margin-top:10px; border-radius:8px;">
+                    <option value="en revisión" ${c.status === 'en revisión' ? 'selected' : ''}>En Revisión</option>
+                    <option value="resuelto" ${c.status === 'resuelto' ? 'selected' : ''}>Resuelto</option>
+                    <option value="sin resolver" ${c.status === 'sin resolver' ? 'selected' : ''}>Sin Resolver</option>
+                </select>
+            </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:20px;">
-            <button onclick="prepararEdicion('${fId}')" class="btn-edit" style="background:#ffc107; color:black; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:bold;">
-                <i class="fas fa-edit"></i> Editar Datos
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:20px;">
+                <button onclick="prepararEdicion('${fId}')" class="btn-edit" style="background:#ffc107; color:black; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:bold;">
+                    <i class="fas fa-edit"></i> Editar Datos
+                </button>
+                <button onclick="eliminarCaso('${fId}')" class="btn-delete" style="background:#dc3545; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:bold;">
+                    <i class="fas fa-trash"></i> Eliminar Caso
+                </button>
+            </div>
+        </div>
+        
+        <div id="visor-imagen-container" style="display:none; text-align:center; position:relative;">
+            <button onclick="cerrarVisorImagen()" style="position:absolute; top:-10px; left:0; background:#dc3545; color:white; border:none; padding:6px 14px; border-radius:5px; cursor:pointer; font-weight:bold; font-size:14px; z-index:10;">
+                <i class="fas fa-arrow-left"></i> Volver al Detalle
             </button>
-            <button onclick="eliminarCaso('${fId}')" class="btn-delete" style="background:#dc3545; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:bold;">
-                <i class="fas fa-trash"></i> Eliminar Caso
-            </button>
+            <div style="margin-top:35px; width:100%; overflow:hidden;">
+                <img id="imagen-ampliada" src="" style="max-width:100%; max-height:55vh; object-fit:contain; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+            </div>
         </div>
     `;
 }
@@ -238,7 +251,6 @@ window.prepararEdicion = function(fId) {
     
     const nuevoNombre = prompt("Editar Nombre:", c.nombre);
     const nuevaDescripcion = prompt("Editar Descripción:", c.descripcion);
-    // Editamos la fecha visual (fechaCaso)
     const nuevaFecha = prompt("Editar Fecha (Formato AAAA-MM-DD):", c.fechaCaso || "");
     
     if (nuevoNombre !== null && nuevaDescripcion !== null && nuevaFecha !== null) {
@@ -277,14 +289,12 @@ window.abrirGrafica = function() {
     
     baseDatosCasos.forEach(c => {
         let mesIndex;
-        // Si el caso tiene una fecha asignada (ej. 2024-01-15), sacamos el mes de ahí
         if (c.fechaCaso) {
             const partes = c.fechaCaso.split('-');
             if (partes.length >= 2) {
-                mesIndex = parseInt(partes[1], 10) - 1; // Enero es 0, Febrero es 1...
+                mesIndex = parseInt(partes[1], 10) - 1;
             }
         } else {
-            // Fallback para casos viejos: extraer mes del ID (Timestamp)
             mesIndex = new Date(c.id).getMonth();
         }
 
@@ -305,6 +315,29 @@ window.abrirGrafica = function() {
 };
 
 function cerrarGrafica() { document.getElementById('modal-grafica').style.display = 'none'; }
-function cerrarModal() { document.getElementById('modal-detalle').style.display = 'none'; }
 
+// FUNCIONES ESPECIALES PARA EL CONTROL DE VISTAS EN EL VISOR INTERNO
+window.mostrarVisorImagen = function(src) {
+    document.getElementById('detalle-textos').style.display = 'none';
+    const visorContainer = document.getElementById('visor-imagen-container');
+    const imgAmpliada = document.getElementById('imagen-ampliada');
+    
+    imgAmpliada.src = src;
+    visorContainer.style.display = 'block';
+};
 
+window.cerrarVisorImagen = function() {
+    document.getElementById('visor-imagen-container').style.display = 'none';
+    document.getElementById('detalle-textos').style.display = 'block';
+};
+
+function cerrarModal() { 
+    document.getElementById('modal-detalle').style.display = 'none'; 
+    // Limpieza de estado: asegura que la ventana vuelva a mostrar textos al abrir un caso nuevo
+    const textos = document.getElementById('detalle-textos');
+    const visor = document.getElementById('visor-imagen-container');
+    if (textos && visor) {
+        textos.style.display = 'block';
+        visor.style.display = 'none';
+    }
+}
