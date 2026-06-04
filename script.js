@@ -340,4 +340,4 @@ function cerrarModal() {
         textos.style.display = 'block';
         visor.style.display = 'none';
     }
-}
+  }
